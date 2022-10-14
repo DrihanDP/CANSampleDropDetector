@@ -37,6 +37,23 @@ browseButton.grid(row=1, column=1, sticky='nw')
 fileInputName = tkinter.Entry(mainWindow, textvariable=path)
 fileInputName.grid(row=1, column=0, sticky='ew')
 
+class GV():
+    bit_ID = []
+    keys = []
+    backwards_jump = []
+    missingUTC = []
+    missing_lines = []
+    duplicateUTC = []
+    duplicateCAN = []
+    key = 1
+    key_count = 0
+    line_num = 0
+    UTC_Sample_count = 0
+    start_time = 0
+    initialList = []
+    _301List = []
+    firstSat = False
+    last_second = 0
 
 def main():
     top = tkinter.Toplevel(mainWindow)
@@ -54,23 +71,6 @@ def main():
     else:
         pass
     
-    class GV():
-        bit_ID = []
-        keys = []
-        backwards_jump = []
-        missingUTC = []
-        missing_lines = []
-        duplicateUTC = []
-        duplicateCAN = []
-        key = 1
-        key_count = 0
-        line_num = 0
-        UTC_Sample_count = 0
-        start_time = 0
-        initialList = []
-        _301List = []
-        firstSat = False
-        last_second = 0
 
     # with open(file_input, 'r') as file: # TODO edit to add
     #     for line in file:
@@ -78,63 +78,6 @@ def main():
     # Load and open the file
     file = open(file_input, 'r')
     line = file.readline()
-
-
-    def mising_check():
-        if key_count == len(GV.bit_ID):
-            key_count = 0
-        if "Rx" in line:
-            key_count += 1
-            if "Rx" and "301" in line[13:31] and line[40:42] == '00':
-                pass
-            elif "Rx" and "301" in line[11:31]:
-                GV.UTC_Sample_count += 1
-                timeBits = line[50:42:-1]
-                UTC_bits = timeBits[::-1].replace(" ", "")
-                UTCSeconds = int(UTC_bits, 16)
-                if GV.start_time == 0:
-                    GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
-                    GV.last_second = UTCSeconds
-                elif UTCSeconds == GV.last_second:
-                    GV.duplicateUTC.append(GV.line_num)
-                elif UTCSeconds < GV.last_second:
-                    GV.backwards_jump.append(GV.line_num)
-                    GV.last_second = UTCSeconds
-                elif UTCSeconds == GV.last_second + 1:
-                    GV.last_second = UTCSeconds
-                else:
-                    GV.missingUTC.append(GV.line_num)
-                    GV.last_second += 2
-                    while True:
-                        if UTCSeconds == GV.last_second:
-                            GV.last_second = UTCSeconds
-                            break
-                        if "Rx" not in line:
-                            GV.line_num += 1
-                        else:
-                            GV.missingUTC.append(GV.line_num)
-                            GV.last_second += 1
-            elif str(bit_ID_dict.get(key_count)) in line[13:31]:
-                pass
-            elif line == previous_line:
-                GV.duplicateCAN.append(GV.line_num)
-                key_count -= 1
-            else:
-                GV.missing_lines.append(GV.line_num)
-                while True:
-                    key_count += 1
-                    if key_count == len(GV.bit_ID) + 1:
-                        key_count = 1
-                    if "Rx" not in line:
-                        GV.line_num += 1
-                        continue
-                    if str(bit_ID_dict.get(key_count)) in line[13:31]:
-                        break
-                    else:
-                        GV.missing_lines.append(GV.line_num)
-
-        previous_line = line
-        # line = file.readline()
 
     while line:
         # storing the first 11000 lines in order to calculate the sample rate and to create a dict of CAN IDs
@@ -202,9 +145,64 @@ def main():
                     else: 
                         firstSat = True
                 elif splitLine[2] == "301" and firstSat == True:
-                    
+                    #TODO add logic for missing samples for the first 11000 lines
+
+    if key_count == len(GV.bit_ID):
+        key_count = 0
+    if "Rx" in line:
+        key_count += 1
+        if "Rx" and "301" in line[13:31] and line[40:42] == '00':
+            pass
+        elif "Rx" and "301" in line[11:31]:
+            GV.UTC_Sample_count += 1
+            timeBits = line[50:42:-1]
+            UTC_bits = timeBits[::-1].replace(" ", "")
+            UTCSeconds = int(UTC_bits, 16)
+            if GV.start_time == 0:
+                GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
+                GV.last_second = UTCSeconds
+            elif UTCSeconds == GV.last_second:
+                GV.duplicateUTC.append(GV.line_num)
+            elif UTCSeconds < GV.last_second:
+                GV.backwards_jump.append(GV.line_num)
+                GV.last_second = UTCSeconds
+            elif UTCSeconds == GV.last_second + 1:
+                GV.last_second = UTCSeconds
+            else:
+                GV.missingUTC.append(GV.line_num)
+                GV.last_second += 2
+                while True:
+                    if UTCSeconds == GV.last_second:
+                        GV.last_second = UTCSeconds
+                        break
+                    if "Rx" not in line:
+                        GV.line_num += 1
+                    else:
+                        GV.missingUTC.append(GV.line_num)
+                        GV.last_second += 1
+        elif str(bit_ID_dict.get(key_count)) in line[13:31]:
+            pass
+        elif line == previous_line:
+            GV.duplicateCAN.append(GV.line_num)
+            key_count -= 1
+        else:
+            GV.missing_lines.append(GV.line_num)
+            while True:
+                key_count += 1
+                if key_count == len(GV.bit_ID) + 1:
+                    key_count = 1
+                if "Rx" not in line:
+                    GV.line_num += 1
+                    continue
+                if str(bit_ID_dict.get(key_count)) in line[13:31]:
+                    break
+                else:
+                    GV.missing_lines.append(GV.line_num)
+
+    previous_line = line
+    # line = file.readline()
     
-    end_time = datetime.timedelta(seconds=(GV.last_second*0.01))
+    GV.end_time = datetime.timedelta(seconds=(GV.last_second*0.01))
 
     results_list = []
     results_list.append(f"Start time: {GV.start_time}")
