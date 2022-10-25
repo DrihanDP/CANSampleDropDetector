@@ -54,6 +54,7 @@ class GV():
     _301List = []
     firstSat = False
     last_second = 0
+    previous_line = ""
 
 def main():
     top = tkinter.Toplevel(mainWindow)
@@ -139,18 +140,70 @@ def main():
             for data in GV.initialList:
                 GV.line_num += 1
                 splitLine = [x for x in data.split(" ") if x != ""]
-                if splitLine[2] == "301" and firstSat == False:
-                    if splitLine[6] == "00" and firstSat == False:
+                if splitLine[2] == "301" and GV.firstSat == False:
+                    if splitLine[6] == "00" and GV.firstSat == False:
                         continue
                     else: 
-                        firstSat = True
-                elif splitLine[2] == "301" and firstSat == True:
+                        GV.firstSat = True
+                elif splitLine[2] == "301" and GV.firstSat == True:
                     #TODO add logic for missing samples for the first 11000 lines
+                    if GV.key_count == len(GV.bit_ID):
+                        GV.key_count = 0
+                    if "Rx" in line:
+                        GV.key_count += 1
+                        if "Rx" and "301" in line[13:31] and line[40:42] == '00':
+                            pass
+                        elif "Rx" and "301" in line[11:31]:
+                            GV.UTC_Sample_count += 1
+                            timeBits = line[50:42:-1]
+                            UTC_bits = timeBits[::-1].replace(" ", "")
+                            UTCSeconds = int(UTC_bits, 16)
+                            if GV.start_time == 0:
+                                GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
+                                GV.last_second = UTCSeconds
+                            elif UTCSeconds == GV.last_second:
+                                GV.duplicateUTC.append(GV.line_num)
+                            elif UTCSeconds < GV.last_second:
+                                GV.backwards_jump.append(GV.line_num)
+                                GV.last_second = UTCSeconds
+                            elif UTCSeconds == GV.last_second + 1:
+                                GV.last_second = UTCSeconds
+                            else:
+                                GV.missingUTC.append(GV.line_num)
+                                GV.last_second += 2
+                                while True:
+                                    if UTCSeconds == GV.last_second:
+                                        GV.last_second = UTCSeconds
+                                        break
+                                    if "Rx" not in line:
+                                        GV.line_num += 1
+                                    else:
+                                        GV.missingUTC.append(GV.line_num)
+                                        GV.last_second += 1
+                        elif str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                            pass
+                        elif line == GV.previous_line:
+                            GV.duplicateCAN.append(GV.line_num)
+                            GV.key_count -= 1
+                        else:
+                            GV.missing_lines.append(GV.line_num)
+                            while True:
+                                GV.key_count += 1
+                                if GV.key_count == len(GV.bit_ID) + 1:
+                                    GV.key_count = 1
+                                if "Rx" not in line:
+                                    GV.line_num += 1
+                                    continue
+                                if str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                                    break
+                                else:
+                                    GV.missing_lines.append(GV.line_num)
 
-    if key_count == len(GV.bit_ID):
-        key_count = 0
+                    GV.previous_line = line
+    if GV.key_count == len(GV.bit_ID):
+        GV.key_count = 0
     if "Rx" in line:
-        key_count += 1
+        GV.key_count += 1
         if "Rx" and "301" in line[13:31] and line[40:42] == '00':
             pass
         elif "Rx" and "301" in line[11:31]:
@@ -180,34 +233,34 @@ def main():
                     else:
                         GV.missingUTC.append(GV.line_num)
                         GV.last_second += 1
-        elif str(bit_ID_dict.get(key_count)) in line[13:31]:
+        elif str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
             pass
-        elif line == previous_line:
+        elif line == GV.previous_line:
             GV.duplicateCAN.append(GV.line_num)
-            key_count -= 1
+            GV.key_count -= 1
         else:
             GV.missing_lines.append(GV.line_num)
             while True:
-                key_count += 1
-                if key_count == len(GV.bit_ID) + 1:
-                    key_count = 1
+                GV.key_count += 1
+                if GV.key_count == len(GV.bit_ID) + 1:
+                    GV.key_count = 1
                 if "Rx" not in line:
                     GV.line_num += 1
                     continue
-                if str(bit_ID_dict.get(key_count)) in line[13:31]:
+                if str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
                     break
                 else:
                     GV.missing_lines.append(GV.line_num)
 
-    previous_line = line
+    GV.previous_line = line
     # line = file.readline()
     
-    GV.end_time = datetime.timedelta(seconds=(GV.last_second*0.01))
+    end_time = datetime.timedelta(seconds=(GV.last_second*0.01))
 
     results_list = []
     results_list.append(f"Start time: {GV.start_time}")
-    results_list.append(f"End time: {GV.end_time}")
-    results_list.append(f"Duration: {GV.end_time - GV.start_time}")
+    results_list.append(f"End time: {end_time}")
+    results_list.append(f"Duration: {end_time - GV.start_time}")
     results_list.append(sample_rate)
     total_lines = GV.line_num - 4
     r1 = "\nTotal number of sent messages: {:,}".format(total_lines)
