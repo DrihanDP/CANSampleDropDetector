@@ -198,62 +198,63 @@ def main():
                                     break
                                 else:
                                     GV.missing_lines.append(GV.line_num)
-
                     GV.previous_line = line
-    if GV.key_count == len(GV.bit_ID):
-        GV.key_count = 0
-    if "Rx" in line:
-        GV.key_count += 1
-        if "Rx" and "301" in line[13:31] and line[40:42] == '00':
-            pass
-        elif "Rx" and "301" in line[11:31]:
-            GV.UTC_Sample_count += 1
-            timeBits = line[50:42:-1]
-            UTC_bits = timeBits[::-1].replace(" ", "")
-            UTCSeconds = int(UTC_bits, 16)
-            if GV.start_time == 0:
-                GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
-                GV.last_second = UTCSeconds
-            elif UTCSeconds == GV.last_second:
-                GV.duplicateUTC.append(GV.line_num)
-            elif UTCSeconds < GV.last_second:
-                GV.backwards_jump.append(GV.line_num)
-                GV.last_second = UTCSeconds
-            elif UTCSeconds == GV.last_second + 1:
-                GV.last_second = UTCSeconds
+    while line:
+        splitLine = [x for x in line.split(" ") if x != ""]
+        if GV.key_count == len(GV.bit_ID):
+            GV.key_count = 0
+        if "Rx" in line:
+            GV.key_count += 1
+            if "Rx" and "301" in line[13:31] and line[40:42] == '00':
+                pass
+            elif "Rx" and "301" in line[11:31]:
+                GV.UTC_Sample_count += 1
+                timeBits = line[50:42:-1]
+                UTC_bits = timeBits[::-1].replace(" ", "")
+                UTCSeconds = int(UTC_bits, 16)
+                if GV.start_time == 0:
+                    GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
+                    GV.last_second = UTCSeconds
+                elif UTCSeconds == GV.last_second:
+                    GV.duplicateUTC.append(GV.line_num)
+                elif UTCSeconds < GV.last_second:
+                    GV.backwards_jump.append(GV.line_num)
+                    GV.last_second = UTCSeconds
+                elif UTCSeconds == GV.last_second + 1:
+                    GV.last_second = UTCSeconds
+                else:
+                    GV.missingUTC.append(GV.line_num)
+                    GV.last_second += 2
+                    while True:
+                        if UTCSeconds == GV.last_second:
+                            GV.last_second = UTCSeconds
+                            break
+                        if "Rx" not in line:
+                            GV.line_num += 1
+                        else:
+                            GV.missingUTC.append(GV.line_num)
+                            GV.last_second += 1
+            elif str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                pass
+            elif line == GV.previous_line:
+                GV.duplicateCAN.append(GV.line_num)
+                GV.key_count -= 1
             else:
-                GV.missingUTC.append(GV.line_num)
-                GV.last_second += 2
+                GV.missing_lines.append(GV.line_num)
                 while True:
-                    if UTCSeconds == GV.last_second:
-                        GV.last_second = UTCSeconds
-                        break
+                    GV.key_count += 1
+                    if GV.key_count == len(GV.bit_ID) + 1:
+                        GV.key_count = 1
                     if "Rx" not in line:
                         GV.line_num += 1
+                        continue
+                    if str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                        break
                     else:
-                        GV.missingUTC.append(GV.line_num)
-                        GV.last_second += 1
-        elif str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
-            pass
-        elif line == GV.previous_line:
-            GV.duplicateCAN.append(GV.line_num)
-            GV.key_count -= 1
-        else:
-            GV.missing_lines.append(GV.line_num)
-            while True:
-                GV.key_count += 1
-                if GV.key_count == len(GV.bit_ID) + 1:
-                    GV.key_count = 1
-                if "Rx" not in line:
-                    GV.line_num += 1
-                    continue
-                if str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
-                    break
-                else:
-                    GV.missing_lines.append(GV.line_num)
+                        GV.missing_lines.append(GV.line_num)
 
-    GV.previous_line = line
-    # line = file.readline()
+        GV.previous_line = line
+        line = file.readline()
     
     end_time = datetime.timedelta(seconds=(GV.last_second*0.01))
 
