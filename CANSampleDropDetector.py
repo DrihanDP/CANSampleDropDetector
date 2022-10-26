@@ -151,12 +151,12 @@ def main():
                         GV.key_count = 0
                     if "Rx" in line:
                         GV.key_count += 1
-                        if "Rx" and "301" in line[13:31] and line[40:42] == '00':
+                        if "Rx" and "301" in splitLine[2:4] and splitLine[6] == '00':
                             pass
-                        elif "Rx" and "301" in line[11:31]:
+                        elif "Rx" and "301" in splitLine[2:4]:
                             GV.UTC_Sample_count += 1
-                            timeBits = line[50:42:-1]
-                            UTC_bits = timeBits[::-1].replace(" ", "")
+                            timeBits = splitLine[7:10]
+                            UTC_bits = "".join(timeBits)
                             UTCSeconds = int(UTC_bits, 16)
                             if GV.start_time == 0:
                                 GV.start_time = datetime.timedelta(seconds=(UTCSeconds * 0.01))
@@ -180,7 +180,7 @@ def main():
                                     else:
                                         GV.missingUTC.append(GV.line_num)
                                         GV.last_second += 1
-                        elif str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                        elif str(bit_ID_dict.get(GV.key_count)) in splitLine[2]:
                             pass
                         elif line == GV.previous_line:
                             GV.duplicateCAN.append(GV.line_num)
@@ -194,7 +194,7 @@ def main():
                                 if "Rx" not in line:
                                     GV.line_num += 1
                                     continue
-                                if str(bit_ID_dict.get(GV.key_count)) in line[13:31]:
+                                if str(bit_ID_dict.get(GV.key_count)) in splitLine[2]:
                                     break
                                 else:
                                     GV.missing_lines.append(GV.line_num)
