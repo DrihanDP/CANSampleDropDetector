@@ -198,7 +198,7 @@ def main():
                                     break
                                 else:
                                     GV.missing_lines.append(GV.line_num)
-                    GV.previous_line = line
+                GV.previous_line = line
     while line:
         splitLine = [x for x in line.split(" ") if x != ""]
         if GV.key_count == len(GV.bit_ID):
